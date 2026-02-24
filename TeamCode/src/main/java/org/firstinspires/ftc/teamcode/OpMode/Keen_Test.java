@@ -2,13 +2,12 @@ package org.firstinspires.ftc.teamcode.OpMode;
 
 //auto opmode libraries
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 //other libraries
-import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
-import com.qualcomm.robotcore.util.ElapsedTime;
+//import com.qualcomm.robotcore.util.ElapsedTime;
 
 //odometry wheel dependent libraries
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
@@ -22,7 +21,7 @@ import org.firstinspires.ftc.teamcode.Utility.*;
 
 
 //set driver hub name for this opmode
-@Autonomous(name = "Keen_Test")
+@TeleOp(name = "Keen_Test")
 
 
 
@@ -33,15 +32,7 @@ public class Keen_Test extends LinearOpMode {
 
 //   DEFINE  VARIABLES
 
-    List<Double> valuesPID = new ArrayList<>();
 
-
-    // {x,y,z,pitch,roll,yaw,ID}
-    double[] position = {0.0,0.0,0.0,0.0,0.0,0.0,21};
-    // position coordinates
-    double currentX;
-    double currentY;
-    double currentHeading;
 
 
     //measured values for initial position of robot settings
@@ -50,15 +41,20 @@ public class Keen_Test extends LinearOpMode {
     double Y_i = 0.0;
     double Yaw_i = 90.0;
 
+    // {x,y,z,pitch,roll,yaw,ID}
+    double[] position = {X_i,Y_i,0.0,0.0,0.0,Yaw_i,21};
+    // position coordinates
+    double currentX;
+    double currentY;
+    double currentHeading;
 
-    // pre-measured target location {x, y, yaw} relative to field
 
-    double[] targetPos = {5.0,5.0};
-    double dx;
-    double dy;
-    double phi;
-    double magTarget;
-    double[] targetVec = {0.0,0.0,0.0,0.0};
+    // pre-measured target location {x, y, yaw_to_launch} relative to field
+    //target position = {x_location, y_location, desired_arenacoord_angle_for_launch}
+    double[] targetPos = {5.0,5.0,45.0};
+
+    //targetVec is used to store the dx,dy,phi, magnitudetoTarget, AngletoTurn
+    double[] targetVec;
 
 
     // pre-measured acceptable error between actual-target
@@ -67,6 +63,7 @@ public class Keen_Test extends LinearOpMode {
     //inches
     double errorDistance = 2.0;
 
+    List<Double> valuesPID = new ArrayList<>();
     double pidValue;
 
 
@@ -85,14 +82,22 @@ public class Keen_Test extends LinearOpMode {
 
     //   INSTANTIATE OBJECTS
     //instantiate utility class
+
+    //looks for april tags
     EyeSeeAprilTags eyeball = new EyeSeeAprilTags();
+    //motor controls
     DriveTrain drive = new DriveTrain();
+    //launcher controls
     Launcher launch = new Launcher();
-    ElapsedTime runtime = new ElapsedTime();
-    // parameters = kp, KI, KD, ClipValue
+    //timer function
+   // ElapsedTime runtime = new ElapsedTime()
+    // PID calculator - parameters = kp, KI, KD, ClipValue
     PIDController pid = new PIDController(0.01,0.01,0.01, 0.25);
-    Pose2D initialpos = new Pose2D(DistanceUnit.INCH,X_i,Y_i,AngleUnit.DEGREES,Yaw_i);
-    //IRSensor objectDetect = new IRSensor();
+    //2d position array fro initial setting of our odometry computer
+    Pose2D initialPos = new Pose2D(DistanceUnit.INCH,X_i,Y_i,AngleUnit.DEGREES,Yaw_i);
+    //calculation of vectors (currently 2/24/26 only difference vector targetVec variable)
+    Calculations calc = new Calculations();
+
 
 
 
@@ -119,8 +124,6 @@ public class Keen_Test extends LinearOpMode {
         drive.initDriveTrain(hardwareMap);
         launch.initLaunch(hardwareMap);
         odocomp = hardwareMap.get(GoBildaPinpointDriver.class, "odocomp");
-
-
         //objectDetect.initSensor(hardwareMap);
 
 
@@ -144,7 +147,7 @@ public class Keen_Test extends LinearOpMode {
 
 
 
-        odocomp.setPosition(initialpos);
+        odocomp.setPosition(initialPos);
 
 
 
@@ -153,6 +156,7 @@ public class Keen_Test extends LinearOpMode {
 
 
         while (opModeIsActive()) {
+
 
 
 
@@ -167,6 +171,13 @@ public class Keen_Test extends LinearOpMode {
             position[1] = currentY;
             position[5] = currentHeading;
 
+
+
+            targetVec = calc.calcDiffVec(position,targetPos);
+
+
+
+
             telemetry.addLine("OUTSIDE While Loop");
             telemetry.addData("difference", (position[5]-targetVec[2]));
             telemetry.addData("currentX",currentX);
@@ -178,19 +189,7 @@ public class Keen_Test extends LinearOpMode {
 
 
 
-            //calculate targetVector(x,y,phi)
 
-            dx = position[0] - targetPos[0];
-            dy = position[1]- targetPos[1];
-            // dx,dy gives arctan(dx/dy) ... may switch to dy,dx arctan(dy/dx) --- CHECK
-            // Math.atan2 returns radians, 180/pi conversion to degrees.
-            phi = ( Math.atan2(dy,dx) * (180/Math.PI) );
-            magTarget = Math.sqrt( Math.pow(dx,2) + Math.pow(dy,2) );
-
-            targetVec[0] = dx;
-            targetVec[1] = dy;
-            targetVec[2] = phi;
-            targetVec[3] = magTarget;
 
 
 
@@ -218,6 +217,10 @@ public class Keen_Test extends LinearOpMode {
 
 
 
+                targetVec = calc.calcDiffVec(position,targetPos);
+
+
+
                 telemetry.addLine("INSIDE While Loop");
                 telemetry.addData("difference", (position[5]-targetVec[2]));
                 telemetry.addData("currentX",currentX);
@@ -241,34 +244,14 @@ public class Keen_Test extends LinearOpMode {
 
 
 
+
+
+
 //drive until mag is less than error
 
 
             while( Math.abs(targetVec[3]) > errorDistance){
 
-
-                //calculate targetVector(x,y,phi)
-
-                dx = position[0] - targetPos[0];
-                dy = position[1]- targetPos[1];
-                // dx,dy gives arctan(dx/dy) ... may switch to dy,dx arctan(dy/dx) --- CHECK
-                // Math.atan2 returns radians, 180/pi conversion to degrees.
-                phi = ( Math.atan2(dy,dx) * (180/Math.PI) );
-                magTarget = Math.sqrt( Math.pow(dx,2) + Math.pow(dy,2) );
-
-                targetVec[0] = dx;
-                targetVec[1] = dy;
-                targetVec[2] = phi;
-                targetVec[3] = magTarget;
-
-
-                // PIDController differenceYawPhi
-                pidValue = pid.calculatePID(0.0,targetVec[3]);
-
-                valuesPID.add(pidValue);
-                // set motor rotate PID value
-                //move(forward, strafe, rotation)
-                drive.move(pidValue,0.0,0.0);
 
                 odocomp.update();
                 currentX = odocomp.getPosX(DistanceUnit.INCH);
@@ -277,6 +260,29 @@ public class Keen_Test extends LinearOpMode {
                 position[0] = currentX;
                 position[1] = currentY;
                 position[5] = currentHeading;
+
+
+
+
+                targetVec = calc.calcDiffVec(position,targetPos);
+
+
+
+
+                // PIDController 0.0 for current and magnitude from targetVec
+                // we are always 0.0 from the start of our targetVec calculated magnitude
+                pidValue = pid.calculatePID(0.0,targetVec[3]);
+
+
+                //just building a list to show in telemetry for troubleshooting
+                valuesPID.add(pidValue);
+
+
+                // set motor rotate PID value
+                //move(forward, strafe, rotation)
+                drive.move(pidValue,0.0,0.0);
+
+
 
 
 
