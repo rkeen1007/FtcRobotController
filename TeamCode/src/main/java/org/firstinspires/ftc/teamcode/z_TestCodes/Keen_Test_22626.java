@@ -158,7 +158,7 @@ public class Keen_Test_22626 extends LinearOpMode {
             telemetry.addData("currentX",currentX);
             telemetry.addData("currentY", currentY);
             telemetry.addData("currentHeading",currentHeading);
-            telemetry.addData("Turn Angle", targetVec[2]);
+            telemetry.addData("Turn Angle", targetVec[4]);
             telemetry.addData("difference", (position[5]-targetVec[4]));
             telemetry.update();
 
