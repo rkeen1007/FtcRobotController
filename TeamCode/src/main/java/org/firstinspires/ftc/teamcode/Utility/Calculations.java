@@ -12,10 +12,9 @@ public class Calculations {
 
 
         //calculate targetVector(x,y,phi)
-
         double dx = position[0] - targetPos[0];
         double dy = position[1]- targetPos[1];
-        // dx,dy gives arctan(dx/dy) ... may switch to dy,dx arctan(dy/dx) --- CHECK
+        //  dy,dx gives arctan(dy/dx)
         // Math.atan2 returns radians, 180/pi conversion to degrees.
         double phi = ( Math.atan2(dy,dx) * (180/Math.PI) );
         double magTarget = Math.sqrt( Math.pow(dx,2) + Math.pow(dy,2) );
@@ -37,27 +36,57 @@ public class Calculations {
 
         //target in Q1
         if( (targetPos[0]>0) && (targetPos[1]>0) ){
-            turnAngle = phi - 90;
+            //phi (+), arenaAngleCoord (-)
+            turnAngle = 270 + phi;
+            //if required to turn more than 180, turn opposite direction
+            //towards desired turnAngle
+            if((turnAngle - position[5])>180){
+                turnAngle = turnAngle - 360;
+            }
             return turnAngle;
         }
+
+
         //target in Q2
         if( (targetPos[0]<0) && (targetPos[1]>0) ){
-            turnAngle = phi + 90;
+            //phi (-), arenaAngleCoord (+)
+            turnAngle = 90 + phi;
+            //if required to turn more than 180, turn opposite direction
+            //towards desired turnAngle
+            if((turnAngle - position[5])>180){
+                turnAngle = turnAngle - 360;
+            }
             return turnAngle;
         }
+
+
         //target in Q3
         if( (targetPos[0]<0) && (targetPos[1]<0) ){
-            turnAngle = phi + 90;
+            //phi (+), arenaAngleCoord (+)
+            turnAngle = 90 + phi;
+            //if required to turn more than 180, turn opposite direction
+            //towards desired turnAngle
+            if((turnAngle - position[5])>180){
+                turnAngle = turnAngle - 360;
+            }
             return turnAngle;
         }
+
+
         //target in Q4
         if( (targetPos[0]>0) && (targetPos[1]<0) ){
-            turnAngle = phi - 90;
+            //phi (-), arenaAngleCoord (-)
+            turnAngle = 270 + phi;
+            //if required to turn more than 180, turn opposite direction
+            //towards desired turnAngle
+            if((turnAngle - position[5])>180){
+                turnAngle = turnAngle - 360;
+            }
             return turnAngle;
         }
+
+
     }
-
-
 
 
 }

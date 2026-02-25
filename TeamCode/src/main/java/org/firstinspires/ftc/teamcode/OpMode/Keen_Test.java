@@ -63,6 +63,11 @@ public class Keen_Test extends LinearOpMode {
     //inches
     double errorDistance = 2.0;
 
+    //a true/false for angle and distance movements
+    boolean correctAngle = false;
+    boolean correctDistance = false;
+    boolean[] onTarget = {correctAngle,correctDistance};
+
     List<Double> valuesPID = new ArrayList<>();
     double pidValue;
 
@@ -172,7 +177,7 @@ public class Keen_Test extends LinearOpMode {
             position[5] = currentHeading;
 
 
-
+            //update the targetVec with dx,dy,phi,magnitude,turnAngle
             targetVec = calc.calcDiffVec(position,targetPos);
 
 
@@ -188,24 +193,27 @@ public class Keen_Test extends LinearOpMode {
             telemetry.update();
 
 
-
-
+            //check to see if we are within acceptable error
+            if(Math.abs((position[5] - targetVec[4])) <= errorAngle){
+                correctAngle = true;
+            }
+            else{
+                correctAngle = false;
+            }
+            //check to see if we are within acceptable error
+            if(targetVec[3] <= errorDistance){
+                correctDistance = true;
+            }
+            else{
+                correctDistance = false;
+            }
 
 
 
             //turn until yaw equals phi within headingError
 
-            // if yaw-phi greater than errorAngle
-            while( Math.abs((position[5]-targetVec[2])) > errorAngle){
-
-
-                // PIDController differenceYawPhi
-                pidValue = pid.calculatePID(position[5],targetVec[2]);
-
-                valuesPID.add(pidValue);
-                // set motor rotate PID value
-                //move(forward, strafe, rotation)
-                drive.move(0.0,0.0,pidValue);
+            // if difference between currentPosition and turnAngle is greater than error
+            while( correctAngle == false ){
 
                 odocomp.update();
                 currentX = odocomp.getPosX(DistanceUnit.INCH);
@@ -217,16 +225,35 @@ public class Keen_Test extends LinearOpMode {
 
 
 
+                //update the targetVec with dx,dy,phi,magnitude,turnAngle
                 targetVec = calc.calcDiffVec(position,targetPos);
 
+                //check to see if we are within acceptable error
+                if(Math.abs((position[5] - targetVec[4])) <= errorAngle){
+                    correctAngle = true;
+                }
+                else{
+                    correctAngle = false;
+                }
+
+                // PIDController differenceYawPhi
+                pidValue = pid.calculatePID(position[5],targetVec[4]);
+
+                //list of pid values for telemetry for troubleshooting
+                valuesPID.add(pidValue);
+
+
+                // set motor rotate PID value
+                //move(forward, strafe, rotation)
+                drive.move(0.0,0.0,pidValue);
 
 
                 telemetry.addLine("INSIDE While Loop");
-                telemetry.addData("difference", (position[5]-targetVec[2]));
+                telemetry.addData("difference", (position[5]-targetVec[4]));
                 telemetry.addData("currentX",currentX);
                 telemetry.addData("currentY", currentY);
                 telemetry.addData("currentHeading",currentHeading);
-                telemetry.addData("target yaw", targetVec[2]);
+                telemetry.addData("target yaw", targetVec[4]);
                 telemetry.addData("PID",pidValue);
                 telemetry.addData("listof PID", valuesPID);
                 telemetry.update();
@@ -247,10 +274,8 @@ public class Keen_Test extends LinearOpMode {
 
 
 
-//drive until mag is less than error
-
-
-            while( Math.abs(targetVec[3]) > errorDistance){
+            //drive until magnitude is less than error
+            while( correctDistance == false ){
 
 
                 odocomp.update();
@@ -263,10 +288,16 @@ public class Keen_Test extends LinearOpMode {
 
 
 
-
+                //update the targetVec with dx,dy,phi,magnitude,turnAngle
                 targetVec = calc.calcDiffVec(position,targetPos);
 
-
+                //check to see if we are within acceptable error
+                if(targetVec[3] <= errorDistance){
+                    correctDistance = true;
+                }
+                else{
+                    correctDistance = false;
+                }
 
 
                 // PIDController 0.0 for current and magnitude from targetVec
